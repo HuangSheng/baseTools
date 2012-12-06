@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xmlns:aop="http://www.springframework.org/schema/aop"
+xmlns:tx="http://www.springframework.org/schema/tx"
+xmlns:context="http://www.springframework.org/schema/context"
+xmlns:security="http://www.springframework.org/schema/security"
+xsi:schemaLocation="
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd 
+http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.0.xsd 
+http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.0.xsd
+http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd
+http://www.springframework.org/schema/security
+http://www.springframework.org/schema/security/spring-security-3.0.xsd"
+>
+	<!-- 国际化文件绑定 -->
+	<bean id="messageSource" class="org.springframework.context.support.ResourceBundleMessageSource" >
+		<property name="basename" value="messages_zh_CN"/>
+	</bean>
+	
+	<!-- 扫描com.eorchis及子包，自动实例化带@注释的实例，这里排除@Controller，所有controller的实例化在common-selvelt中完成 -->
+    <context:component-scan base-package="com.eorchis" >      
+     	<context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>     
+  	</context:component-scan>
+	 
+	<!-- 数据源  
+	<bean id="dataSource" class="org.springframework.jndi.JndiObjectFactoryBean">
+    	<property name="jndiName" value="${database.JNDI}"/>
+  	</bean>
+  	-->
+  	<!-- 数据源 -->
+	<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource">
+	    <property name="driverClassName" value="com.mysql.jdbc.Driver"></property>  
+	    <property name="url" value="jdbc:mysql://localhost:3306/webtools"></property>  
+	    <property name="username" value="root"></property>  
+	    <property name="password" value="root"></property> 
+	    <property name="maxActive" value="20"></property> 
+	    <property name="maxWait" value="-1"></property> 
+	    <property name="maxIdle" value="5"></property> 
+	 </bean>
+	
+	<!-- 隐式地向Spring容器注册AutowiredAnnotationBeanPostProcessor、 CommonAnnotationBeanPostProcessor、 
+	      PersistenceAnnotationBeanPostProcessor以及 RequiredAnnotationBeanPostProcessor
+	      这4个BeanPostProcessor,已完成让负责处理元数据的处理器工作起来，实际就是配合使用Spring注解注入属性的方式生效，
+	      例如：
+	      	@Autowired
+			private UserService frontendUserServiceImpl;//前台用户管理业务层接口
+	 -->
+	<context:annotation-config/>
+	<bean id="propertyConfigurer" 
+    	  class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer"> 
+        <property name="locations"> 
+             <list>   
+ 				<value>classpath*:/jdbc.properties</value>   
+             </list> 
+        </property> 
+    </bean> 
+    
+    <bean id="sessionFactory" class="org.springframework.orm.hibernate3.annotation.AnnotationSessionFactoryBean"> 
+		<property name="dataSource" ref="dataSource" /> 
+		<property name="packagesToScan">
+			<list>
+				<value>com.**.bo</value>
+				<value>com.**.domain</value>
+			</list>
+		</property>
+		<property name="hibernateProperties">
+        	<props>
+            	<prop key="hibernate.dialect">${database.dialect}</prop>
+                <prop key="hibernate.show_sql">${database.show_sql}</prop>
+                <prop key="hibernate.hbm2ddl.auto">${database.hbm2ddl}</prop>
+            </props>
+        </property>
+	</bean>
+	
+	<!-- 事务管理器 -->
+	<bean id="transactionManager" class="org.springframework.orm.hibernate3.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+	
+	<!-- 使用注解方式的aop -->
+    <aop:aspectj-autoproxy />
+    
+    <aop:config >
+		<!-- 定义一个通知器，com.eorchis包下任意子包下的service包下的所有类、所有方法将被装配事务通知-->  
+		<aop:advisor id="managerTx" advice-ref="txAdvice" pointcut="execution(* *com.eorchis..manager.*.*(..))" order="1"/>
+	</aop:config>
+	
+	<!-- read-only="true"只读事务处理，通知hibernate不需刷新缓存来提高效率，其他方法做读写事务处理 -->
+	<tx:advice id="txAdvice" transaction-manager="transactionManager">
+		<tx:attributes>
+			<tx:method name="add*" propagation="REQUIRED" rollback-for="Exception"/>
+			<tx:method name="delete*" propagation="REQUIRED" rollback-for="Exception"/>
+			<tx:method name="update*" propagation="REQUIRED" rollback-for="Exception"/>
+			<tx:method name="discard*" propagation="REQUIRED" rollback-for="Exception"/>
+			<tx:method name="batch*" propagation="REQUIRED" rollback-for="Exception"/>
+			<tx:method name="import*" propagation="REQUIRED" rollback-for="Exception"/>
+			<tx:method name="issue*" propagation="REQUIRED" rollback-for="Exception"/>
+			<tx:method name="record*" propagation="REQUIRED" rollback-for="Exception"/>
+			<tx:method name="get*" read-only="true"/>
+			<tx:method name="list*" read-only="true"/>
+			<tx:method name="count*" read-only="true"/>
+			<tx:method name="*"/>
+		</tx:attributes>
+   </tx:advice>
+   
+    <aop:config>
+	  <!--  定义一个通知器，com.eorchis包下任意子包下的ui包下的所有类、所有方法将被自动处理记录异常日志 --> 
+	  <aop:advisor id="managerLog" advice-ref="logAdvice" pointcut="execution(* *com.eorchis..controller.*.*(..))" order="1" /> 
+    </aop:config>
+	<bean id="logAdvice" class="com.eorchis.core.springext.advice.RecordExceptionAdvice"/>
+	
+	<!-- 使@Transactional注解生效 -->
+	<tx:annotation-driven transaction-manager="transactionManager" />
+	
+	<!-- 注入ApplicationContext 使程序以后可直接使用Spring上下文获取bean create by HuangS at 2012-09-14 -->
+    <bean id="SpringBeanUtil" class="com.eorchis.commons.utils.SpringBeanUtil" />
+	
+	<!-- 使用 apache tiles 布局模板 
+	<bean id="viewResolver" class="org.springframework.web.servlet.view.UrlBasedViewResolver">     
+		<property name="viewClass">         
+			<value>             
+				org.springframework.web.servlet.view.tiles2.TilesView         
+			</value>     
+		</property> 
+	</bean> 
+	<bean id="tilesConfigurer" class="org.springframework.web.servlet.view.tiles2.TilesConfigurer">     
+		<property name="definitions">         
+			<list>             
+				<value>/WEB-INF/tiles/tiles.xml</value>         
+			</list>     
+		</property> 
+	</bean>
+	-->
+	<import resource="commonconfig.xml"/>
+	
+</beans>

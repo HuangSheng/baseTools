@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xmlns:aop="http://www.springframework.org/schema/aop"
+xmlns:tx="http://www.springframework.org/schema/tx"
+xmlns:context="http://www.springframework.org/schema/context"
+xsi:schemaLocation="
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd 
+http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.0.xsd 
+http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.0.xsd
+http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd
+">
+	<bean id="globalConfigure" class="com.eorchis.core.configure.GlobalConfigure">
+		<property name="commonDatePattern">
+			<value>yyyy-MM-dd HH:mm:ss</value>
+		</property>
+		<!-- y为记录日志，非y为不记录日志 -->
+		<property name="addMethodWithLog">
+			<value>n</value>
+		</property>
+		<property name="updateMethodWithLog">
+			<value>n</value>
+		</property>
+		<property name="batchAddMethodWithLog">
+			<value>n</value>
+		</property>
+		<property name="batchUpdateMethodWithLog">
+			<value>n</value>
+		</property>
+		<property name="batchUpdateStateMethodWithLog">
+			<value>n</value>
+		</property>
+		<property name="batchDeleteMethodWithLog">
+			<value>n</value>
+		</property>
+		<property name="initCreditLevelBase">
+			<value>150</value>
+		</property>
+		<property name="initLevelIncreaseBase">
+			<value>250</value>
+		</property>
+		<property name="initMaxLevel">
+			<value>50</value>
+		</property>
+		<property name="creditLevelBase">
+			<value>0</value>
+		</property>
+		<property name="levelIncreaseBase">
+			<value>0</value>
+		</property>
+		<property name="maxLevel">
+			<value>0</value>
+		</property>
+	</bean>
+	<!-- 决定资源数据的缓存,方法在CacheFactory.java中,getMapCache方法以HashMap为缓存,getMemCache方法以Mem为缓存-->
+	<bean id="cacheFactory" class="com.eorchis.core.cache.CacheFactory" factory-method="getMapCache"></bean>
+	
+	<!-- 系统参数缓存管理 -->
+    <bean id="systemParameterCacheManager" class="com.eorchis.module.systemparameter.cache.SystemParameterCacheManager"  factory-method="getInstance">
+    	<property name="baseCache" ref="cacheFactory"></property>
+    </bean>
+    
+    <!-- 决定上传文件实现方式,方法在FileUploadFactory.java中,getUploadDISK方法以硬盘存储实现,getUploadDB方法以数据库存储实现-->
+	<bean id="uploadFactory" class="com.eorchis.module.fileupload.service.FileUploadFactory" factory-method="getUploadDB"></bean>
+    
+    <!-- java邮件发送实现 -->
+    <bean id="javaMailSender" class="org.springframework.mail.javamail.JavaMailSenderImpl"></bean>
+    
+    <bean id="taskExecutor" class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
+		<property name="corePoolSize" value="10"/>
+		<property name="maxPoolSize" value="20"/>
+	</bean>
+    
+</beans>
